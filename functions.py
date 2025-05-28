@@ -44,7 +44,7 @@ def categorize_state(state):
         return 'Overseas military'
     else:
         return 'International'
-    
+
 def categorize_practice(practice):
     """
     Categorizes practice type.
@@ -528,20 +528,25 @@ def avg_liklihood_info(df_model_output):
 
     return 0;
 
-def generate_shap(df_model_output, df_model, model):
+def generate_shap(df_model, model):
     """
     Generate SHAP chart visualization
 
-    :param a: DataFrame of model output.
-    :param b: DataFrame ready to be fed to a model
-    :param c: model from the pickle file
-    :return: 0.
+    :param a: DataFrame ready to be fed to a model
+    :param b: model from the pickle file
+    :return: DataFrame of SHAP values for every customer_id.
     """
     # Load the explainer (use model you already trained)
     explainer = shap.TreeExplainer(model)
 
     # df_features is the data used for prediction
     shap_values = explainer.shap_values(df_model)
+
+    shap_df = pd.DataFrame(shap_values, columns=df_model.columns)
+
+    if(TEST):{
+        st.dataframe(shap_df)
+    }
 
     st.subheader("Feature Importance")
 
@@ -550,7 +555,7 @@ def generate_shap(df_model_output, df_model, model):
     shap.summary_plot(shap_values, df_model, plot_type="bar")
     st.pyplot(fig3)
 
-    return 0;
+    return shap_df;
 
 def convert_for_download(df):
     """
@@ -560,30 +565,43 @@ def convert_for_download(df):
     """
     return df.to_csv().encode("utf-8")
 
-def csv_download_buttons(df_model_output):
+def csv_download_buttons(df_model_output, shap_df):
     """
     Generate join/drop buttons for csv download capability
 
     :param a: DataFrame of model output.
+    :param b: DataFrame of SHAP values for every row.
     :return: 0.
     """
 
     # drop cols needed for class 0/1 bins
     cleaned_df = df_model_output.drop(columns=['class_0_bins', 'class_1_bins'])
 
+    # join df_model_output and shap_df side-by-side on index
+    combined_df = pd.concat([cleaned_df.reset_index(drop=True), shap_df.reset_index(drop=True)], axis=1)
+
+    if(TEST):{
+        st.dataframe(combined_df)
+    }
+
+
     # generate class 0 output df (drops)
-    mask = df_model_output['predicted_class'] == 0
-    class_0_output = df_model_output[mask][['customer_id', 'predicted_class', 
-                                            'class_0_predicted_prob']]
+    mask = combined_df['predicted_class'] == 0
+    # class_0_output = combined_df[mask][['customer_id', 'predicted_class', 
+    #                                         'class_0_predicted_prob']]
+
+    class_0_output = combined_df[mask].drop(columns=['class_1_predicted_prob'])
 
     if(TEST):{
         st.dataframe(class_0_output.head())
     }
 
     # generate class 1 output df (renewals)
-    mask = df_model_output['predicted_class'] == 1
-    class_1_output = df_model_output[mask][['customer_id', 'predicted_class', 
-                                            'class_1_predicted_prob']]
+    mask = combined_df['predicted_class'] == 1
+    # class_1_output = combined_df[mask][['customer_id', 'predicted_class', 
+    #                                         'class_1_predicted_prob']]
+
+    class_1_output = combined_df[mask].drop(columns=['class_0_predicted_prob'])
     
     if(TEST):{
         st.dataframe(class_1_output.head())
