@@ -26,12 +26,18 @@ def main():
 
         # read in dirty data from data collection
         df_dirty_data = process_csv_to_df(file_upload)
+
+        st.write("df_dirty_data", len(df_dirty_data))
+        st.dataframe(df_dirty_data)
     
         if(TEST):{
             st.dataframe(df_dirty_data.head())
         }
 
         df_new_unseen_data = clean_data(df_dirty_data)
+
+        st.write("df_new_unseen_data", len(df_new_unseen_data))
+        st.dataframe(df_new_unseen_data)
 
         if(TEST):{
             st.dataframe(df_new_unseen_data.head())
@@ -61,8 +67,46 @@ def main():
 
             generate_charts(df_model_output)
             avg_liklihood_info(df_model_output)
-            shap_df = generate_shap(df_model, model)
-            csv_download_buttons(df_model_output, shap_df)   
+
+            # st.dataframe(df_model_output)
+
+            # st.dataframe(df_model)
+
+            # shap_df = generate_shap(df_model, model)
+
+            # class_0_df, class_1_df = generate_class_dfs(df_model_output, shap_df)
+
+            # st.dataframe(class_0_df)
+            # st.dataframe(class_1_df)
+
+            # generate_shap2(df_model, model, class_0_df, class_1_df)
+
+            # csv_download_buttons(df_model_output, shap_df)   
+
+
+            # ___________________ 2 separate SHAP ________________
+
+
+            shap_df = generate_shap2(df_model_output, df_model, model)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
             # ___________________ Single customer_id Waterfall ________________

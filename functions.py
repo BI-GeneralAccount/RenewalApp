@@ -77,7 +77,7 @@ def process_csv_to_df(file_upload):
     if ('Unnamed: 0' in df_new_unseen_data.columns):
         print("yes, df contained Unnamed: 0")
         print("Unnamed: 0 is dropped")
-        df_new_unseen_data.drop(columns=['Unnamed: 0'], inplace=True)
+        df_new_unseen_data.drop(columns=['Unnamed: 0'], inplace=True).reset_index()
 
     return df_new_unseen_data;
 
@@ -205,6 +205,7 @@ def clean_data(df_raw_data):
 
     # convert 'customer_id' to int
     renewal_df_log['customer_id'] = renewal_df_log['customer_id'].astype('int64')
+    renewal_df_log = renewal_df_log.reset_index(drop=True)
     
     return renewal_df_log;
 
@@ -548,14 +549,14 @@ def generate_shap(df_model, model):
         st.dataframe(shap_df)
     }
 
-    st.subheader("Feature Importance")
+    # st.subheader("Feature Importance")
 
     # summary plot in bar chart format
     fig3, ax3 = plt.subplots()
     shap.summary_plot(shap_values, df_model, plot_type="bar")
     st.pyplot(fig3)
 
-    return shap_df;
+    return shap_df
 
 def convert_for_download(df):
     """
@@ -565,25 +566,25 @@ def convert_for_download(df):
     """
     return df.to_csv().encode("utf-8")
 
-def csv_download_buttons(df_model_output, shap_df):
+def generate_class_dfs(df_model_output, shap_df):
     """
-    Generate join/drop buttons for csv download capability
+    Generate dataframes that contain class_0 & class_1 information, separately
 
     :param a: DataFrame of model output.
     :param b: DataFrame of SHAP values for every row.
-    :return: 0.
+    :return dfs: DataFrame for class_0 & DataFrame for class_1 
     """
 
     # drop cols needed for class 0/1 bins
     cleaned_df = df_model_output.drop(columns=['class_0_bins', 'class_1_bins'])
 
     # join df_model_output and shap_df side-by-side on index
-    combined_df = pd.concat([cleaned_df.reset_index(drop=True), shap_df.reset_index(drop=True)], axis=1)
+    combined_df = pd.concat([cleaned_df.reset_index(drop=True), 
+                             shap_df.reset_index(drop=True)], axis=1)
 
     if(TEST):{
         st.dataframe(combined_df)
     }
-
 
     # generate class 0 output df (drops)
     mask = combined_df['predicted_class'] == 0
@@ -606,6 +607,158 @@ def csv_download_buttons(df_model_output, shap_df):
     if(TEST):{
         st.dataframe(class_1_output.head())
     }
+
+    return class_0_output, class_1_output
+
+def generate_shap2(df_model_output, df_model, model):
+    """
+    Generate barchart for class_0 and class_1, showing the the spread of those
+    higher than 0.8 in both classes
+
+    :param a: DataFrame of Class 0 data
+    :param b: Dataframe of Class 1 data
+    :return: 0
+    """
+
+    """
+    Generate SHAP chart visualization
+
+    :param a: DataFrame ready to be fed to a model
+    :param b: model from the pickle file
+    :return: DataFrame of SHAP values for every customer_id.
+    """
+
+    # st.write("df_model_output len", len(df_model_output))
+    # st.dataframe(df_model_output)
+
+    # Load the explainer (use model you already trained)
+    explainer = shap.TreeExplainer(model)
+
+    # df_features is the data used for prediction
+    shap_values = explainer.shap_values(df_model)
+
+    shap_df = pd.DataFrame(shap_values, columns=df_model.columns)
+
+    # drop cols needed for class 0/1 bins
+    cleaned_df = df_model_output.drop(columns=['class_0_bins', 'class_1_bins'])
+
+    # join df_model_output and shap_df side-by-side on index
+    combined_df = pd.concat([cleaned_df.reset_index(drop=True), shap_df.reset_index(drop=True)], axis=1)
+
+    # Separate Class 0/1 dfs & drop columns that are NOT SHAP values
+
+    # drop these columns, they're not needed for the shap visualization 
+    # drop_cols = ['customer_id', 'predicted_class', 'class_0_predicted_prob', 'class_1_predicted_prob']
+    drop_cols = []
+
+    mask = combined_df['predicted_class'] == 0
+    class_0_shap = combined_df[mask].drop(columns=drop_cols)
+    # filter for probability higher than the average
+    class_0_probs = class_0_shap['class_0_predicted_prob']
+    # find the mean of probabilities (>= 0.5)
+    class_0_probs_avg = class_0_probs[class_0_probs >= 0.5].mean()
+    # filter df for rows ony >= average
+    mask = class_0_shap['class_0_predicted_prob'] >= class_0_probs_avg
+    class_0_shap = class_0_shap[mask]
+
+
+
+    mask = combined_df['predicted_class'] == 1
+    class_1_shap = combined_df[mask].drop(columns=drop_cols)
+    # filter for probability higher than the average
+    class_1_probs = class_1_shap['class_1_predicted_prob']
+    # find the mean of probabilities (>= 0.5)
+    class_1_probs_avg = class_1_probs[class_1_probs >= 0.5].mean()
+    # filter df for rows ony >= average
+    mask = class_1_shap['class_1_predicted_prob'] >= class_1_probs_avg
+    class_1_shap = class_1_shap[mask]
+
+
+
+
+    # st.dataframe(class_0_shap)
+    # st.dataframe(class_1_shap)
+    # st.write(shap_values[class_1_shap.index])
+
+    # st.dataframe(class_1_shap)
+
+
+    # st.subheader("Class 0 Feature Importance")
+    # # summary plot in bar chart format
+    # fig, ax = plt.subplots()
+    # shap.summary_plot(shap_values[class_0_shap.index], df_model, plot_type="bar")
+    # st.pyplot(fig)
+
+    # st.subheader("Class 1 Feature Importance")
+    # # summary plot in bar chart format
+    # fig1, ax1 = plt.subplots()
+    # shap.summary_plot(shap_values[class_1_shap.index], df_model, plot_type="bar")
+    # st.pyplot(fig1)
+
+
+    st.write("## Feature Importance")
+
+    # three columns for button arrangement
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Class 0")
+        # summary plot in bar chart format
+        fig, ax = plt.subplots()
+        shap.summary_plot(shap_values[class_0_shap.index], df_model, plot_type="bar")
+        st.pyplot(fig)
+
+    with col2:
+        st.subheader("Class 1")
+        # summary plot in bar chart format
+        fig1, ax1 = plt.subplots()
+        shap.summary_plot(shap_values[class_1_shap.index], df_model, plot_type="bar")
+        st.pyplot(fig1)
+
+
+    return shap_df
+
+def csv_download_buttons(df_model_output, shap_df):
+    """
+    Generate join/drop buttons for csv download capability
+
+    :param a: DataFrame of model output.
+    :param b: DataFrame of SHAP values for every row.
+    :return: 0
+    """
+
+    # # drop cols needed for class 0/1 bins
+    # cleaned_df = df_model_output.drop(columns=['class_0_bins', 'class_1_bins'])
+
+    # # join df_model_output and shap_df side-by-side on index
+    # combined_df = pd.concat([cleaned_df.reset_index(drop=True), shap_df.reset_index(drop=True)], axis=1)
+
+    # if(TEST):{
+    #     st.dataframe(combined_df)
+    # }
+
+
+    # # generate class 0 output df (drops)
+    # mask = combined_df['predicted_class'] == 0
+    # # class_0_output = combined_df[mask][['customer_id', 'predicted_class', 
+    # #                                         'class_0_predicted_prob']]
+
+    # class_0_output = combined_df[mask].drop(columns=['class_1_predicted_prob'])
+
+    # if(TEST):{
+    #     st.dataframe(class_0_output.head())
+    # }
+
+    # # generate class 1 output df (renewals)
+    # mask = combined_df['predicted_class'] == 1
+    # # class_1_output = combined_df[mask][['customer_id', 'predicted_class', 
+    # #                                         'class_1_predicted_prob']]
+
+    # class_1_output = combined_df[mask].drop(columns=['class_0_predicted_prob'])
+    
+    # if(TEST):{
+    #     st.dataframe(class_1_output.head())
+    # }
     
     # three columns for button arrangement
     col1, col2, col3 = st.columns(3)
