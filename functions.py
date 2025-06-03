@@ -660,6 +660,15 @@ def generate_shap2(df_model_output, df_model, model):
     # filter df for rows ony >= average
     mask = class_0_shap['class_0_predicted_prob'] >= class_0_probs_avg
     class_0_shap = class_0_shap[mask]
+    class_0_shap.drop(columns=['customer_id', 'predicted_class',
+                               'class_0_predicted_prob', 'class_1_predicted_prob'],
+                               inplace=True)
+    # get the averages and drop all positive (leaving only negative to plot)
+    class_0_avg  = class_0_shap.mean()
+    mask = class_0_avg <= 0
+    negative_averages  = class_0_avg[mask].sort_values(ascending=False)
+
+
 
 
 
@@ -672,12 +681,19 @@ def generate_shap2(df_model_output, df_model, model):
     # filter df for rows ony >= average
     mask = class_1_shap['class_1_predicted_prob'] >= class_1_probs_avg
     class_1_shap = class_1_shap[mask]
+    class_1_shap.drop(columns=['customer_id', 'predicted_class',
+                               'class_0_predicted_prob', 'class_1_predicted_prob'],
+                               inplace=True)
+    # get the averages and drop all positive (leaving only negative to plot)
+    class_1_avg  = class_1_shap.mean()
+    mask = class_1_avg >= 0
+    positive_averages  = class_1_avg[mask].sort_values(ascending=True)
 
 
 
 
-    # st.dataframe(class_0_shap)
-    # st.dataframe(class_1_shap)
+    # st.dataframe(negative_averages)
+    # st.dataframe(positive_averages)
     # st.write(shap_values[class_1_shap.index])
 
     # st.dataframe(class_1_shap)
@@ -702,18 +718,42 @@ def generate_shap2(df_model_output, df_model, model):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Class 0")
-        # summary plot in bar chart format
+        # st.subheader("Class 0")
+        # # summary plot in bar chart format
+        # fig, ax = plt.subplots()
+        # shap.summary_plot(shap_values[class_0_shap.index], df_model, plot_type="bar")
+        # st.pyplot(fig)
+        # ax = negative_averages.plot(kind='barh', color='lightcoral', title='Features of Unrealized Value')
+        # plt.xlabel('Average Value')
+        # plt.ylabel('')
+        # plt.tight_layout()
+        # plt.show()
+
         fig, ax = plt.subplots()
-        shap.summary_plot(shap_values[class_0_shap.index], df_model, plot_type="bar")
+        negative_averages.plot(kind='barh', color='lightcoral', title='Features of Unrealized Value')
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        plt.tight_layout()
         st.pyplot(fig)
 
     with col2:
-        st.subheader("Class 1")
-        # summary plot in bar chart format
-        fig1, ax1 = plt.subplots()
-        shap.summary_plot(shap_values[class_1_shap.index], df_model, plot_type="bar")
-        st.pyplot(fig1)
+        # st.subheader("Class 1")
+        # # summary plot in bar chart format
+        # fig1, ax1 = plt.subplots()
+        # shap.summary_plot(shap_values[class_1_shap.index], df_model, plot_type="bar")
+        # st.pyplot(fig1)
+        # ax = positive_averages.plot(kind='barh', color='lightcoral', title='Features of Unrealized Value')
+        # plt.xlabel('Average Value')
+        # plt.ylabel('')
+        # plt.tight_layout()
+        # plt.show()
+
+        fig, ax = plt.subplots()
+        positive_averages.plot(kind='barh', color='#046ccc', title='Features of Realized Value')
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        plt.tight_layout()
+        st.pyplot(fig)
 
 
     return shap_df
