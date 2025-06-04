@@ -26,18 +26,12 @@ def main():
 
         # read in dirty data from data collection
         df_dirty_data = process_csv_to_df(file_upload)
-
-        # st.write("df_dirty_data", len(df_dirty_data))
-        # st.dataframe(df_dirty_data)
     
         if(TEST):{
             st.dataframe(df_dirty_data.head())
         }
 
         df_new_unseen_data = clean_data(df_dirty_data)
-
-        # st.write("df_new_unseen_data", len(df_new_unseen_data))
-        # st.dataframe(df_new_unseen_data)
 
         if(TEST):{
             st.dataframe(df_new_unseen_data.head())
@@ -59,50 +53,23 @@ def main():
 
         # else: process the model and get down to business
         else:
+
             df_model_output, df_model, model = run_model(df_new_unseen_data)
 
             if(TEST):{
                 st.dataframe(df_model_output.head())
             }
 
+            # generate first chart set: bar, pie, bar
             generate_charts(df_model_output)
-            avg_liklihood_info(df_model_output)
 
-            # st.dataframe(df_model_output)
+            # generate avg likelihood for drops & renewals
+            avg_likelihood_info(df_model_output)
 
-            # st.dataframe(df_model)
+            # Generate SHAP and return dfs for Class 1 & Class 0 data
+            class_0_output, class_1_output = generate_shap(df_model_output, df_model, model)
 
-            # shap_df = generate_shap(df_model, model)
-
-            # class_0_df, class_1_df = generate_class_dfs(df_model_output, shap_df)
-
-            # st.dataframe(class_0_df)
-            # st.dataframe(class_1_df)
-
-            # generate_shap2(df_model, model, class_0_df, class_1_df)
-
-            # csv_download_buttons(df_model_output, shap_df)   
-
-
-            # ___________________ 2 separate SHAP ________________
-
-
-            shap_df = generate_shap2(df_model_output, df_model, model)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            csv_download_buttons(df_model_output, shap_df)   
 
 
 
@@ -111,20 +78,20 @@ def main():
 
             # ___________________ Single customer_id Waterfall ________________
 
-            if(TEST):
-                explainer = shap.TreeExplainer(model)
+            # if(TEST):
+            #     explainer = shap.TreeExplainer(model)
 
-                # pick a sample row (e.g., first row)
-                sample_index = 5585
+            #     # pick a sample row (e.g., first row)
+            #     sample_index = 5585
 
-                # get the single SHAP values
-                shap_value_single = explainer(df_model.iloc[[sample_index]])
+            #     # get the single SHAP values
+            #     shap_value_single = explainer(df_model.iloc[[sample_index]])
 
-                # waterfall plot
-                st.subheader(f"SHAP Waterfall Plot for Row {sample_index}")
-                fig2, ax2 = plt.subplots()
-                shap.plots.waterfall(shap_value_single[0], show=False)
-                st.pyplot(fig2)   
+            #     # waterfall plot
+            #     st.subheader(f"SHAP Waterfall Plot for Row {sample_index}")
+            #     fig2, ax2 = plt.subplots()
+            #     shap.plots.waterfall(shap_value_single[0], show=False)
+            #     st.pyplot(fig2)   
             
     return 0
 
