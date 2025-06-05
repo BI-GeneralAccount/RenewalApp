@@ -64,34 +64,21 @@ def main():
             generate_charts(df_model_output)
 
             # generate avg likelihood for drops & renewals
-            avg_likelihood_info(df_model_output)
+            class_0_probs_avg, class_1_probs_avg = avg_likelihood_info(df_model_output)
 
             # Generate SHAP and return dfs for Class 1 & Class 0 data
-            class_0_output, class_1_output = generate_shap(df_model_output, df_model, model)
+            class_0_output, class_1_output = generate_shap(df_model_output, 
+                                                           df_model, model, 
+                                                           class_0_probs_avg, 
+                                                           class_1_probs_avg)
 
-            csv_download_buttons(df_model_output, shap_df)   
-
-
-
-
-
-
+            csv_download_buttons(class_0_output, class_1_output)   
+            
             # ___________________ Single customer_id Waterfall ________________
 
-            # if(TEST):
-            #     explainer = shap.TreeExplainer(model)
-
-            #     # pick a sample row (e.g., first row)
-            #     sample_index = 5585
-
-            #     # get the single SHAP values
-            #     shap_value_single = explainer(df_model.iloc[[sample_index]])
-
-            #     # waterfall plot
-            #     st.subheader(f"SHAP Waterfall Plot for Row {sample_index}")
-            #     fig2, ax2 = plt.subplots()
-            #     shap.plots.waterfall(shap_value_single[0], show=False)
-            #     st.pyplot(fig2)   
+            if(TEST):
+                index_for_customer_id = 5585
+                single_customer_shap(df_model, model, index_for_customer_id)
             
     return 0
 
