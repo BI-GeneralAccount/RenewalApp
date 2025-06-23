@@ -7,8 +7,12 @@ import plotly.express as px
 import shap
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import PowerTransformer
+from scipy.stats import boxcox
 
 TEST = 0
+model_file_name = '250623_xgb_model.pkl'
 
 def app_intro_text():
     """
@@ -95,6 +99,39 @@ def categorize_practice(practice):
     else:
        return 'Other' 
 
+def categorize_payment_method(row):
+    """
+    Function to categorize payment methods.
+
+    :param a: a row from a DataFrame of new, dirty data
+    :return: a string (the method that was used)
+
+    """
+    method = row['receipt_type_descr']
+    
+    if isinstance(method, str) and method.strip().lower().startswith('web'):
+        return 'Automated'
+    else:
+        return 'Manual';
+
+def categorize_gender(gender):
+    """
+    Categorizes the gender of a row item based on gender code.
+
+    :param a: a gender
+    :return: a string, the gender assigned to that row
+    """
+
+    male = ['MALE']
+    female = ['FEMALE']
+
+    if gender in male:
+        return 'male'
+    elif gender in female:
+        return 'female'
+    else:
+        return 'other';
+
 def clean_data(df_raw_data):
     """
     Processes and cleans data from data collection phase and prepares it for
@@ -108,111 +145,160 @@ def clean_data(df_raw_data):
     # ensure a length of 8 characters.
     df_raw_data['customer_id'] = df_raw_data['customer_id'].astype(str).str.zfill(8)
 
+    df_raw_data.columns = df_raw_data.columns.str.lower()
+
+    # Drop rows where activity is 'Other'
+    df_raw_data = df_raw_data[df_raw_data['activity'] != 'Other']
+    df_raw_data.reset_index(drop=True, inplace=True)
+    # Create the member_renewed_indicator column
+    df_raw_data['member_renewed_indicator'] = df_raw_data['activity'].apply(lambda x: 1 if x.lower() == 'renewed' else 0)
+
     # Drop duplicate customer_id, keeping only the last occurrence
-    df_raw_data = df_raw_data.drop_duplicates(subset='customer_id', keep='last')
+    renewal_df = df_raw_data.drop_duplicates(subset='customer_id', keep='last')
 
-    # Create a new DataFrame 'new_joined_before_2017_df' by filtering rows 
-    # from 'tenure_cal_df'.
-    mask = df_raw_data['MOST_RECENT_ADD_DATE'] < '2017-01-01'
-    new_joined_before_2017_df = pd.DataFrame(df_raw_data[mask])
+    # Apply the function row-wise
+    renewal_df['payment_type'] = renewal_df.apply(categorize_payment_method, axis=1)
 
-    # Filter rows where the 'cycle_begin_date' column has a value of '0'
-    mask = df_raw_data['cycle_begin_date'] == '0'
-    one_renewal_date_df = df_raw_data[mask]
-
-    # Combine the 'customer_id' columns from 'new_joined_before_2017_df' and 
-    # 'one_renewal_date_df' into a single Series.
-    exclude_ids = pd.concat([new_joined_before_2017_df['customer_id'], 
-                             one_renewal_date_df['customer_id']]).drop_duplicates(keep=False)
-
-    # Filter rows from 'renewal_raw_df' where the 'customer_id' is not in the 'exclude_ids' list.
-    mask = ~df_raw_data['customer_id'].isin(exclude_ids)
-    renewal_filtered_df = df_raw_data[mask] 
-
-    # Create a new DataFrame by dropping unnecessary columns from 'renewal_filtered_df'.
-    renewal_df = renewal_filtered_df.drop(['MOST_RECENT_ADD_DATE', 'CYCLE_BEGIN_DATE', 
-                                           'CYCLE_END_DATE', 'GRACE_DATE', 
-                                           'Group Member Dues','PAYMENT_STATUS', 
-                                           'AS_OF_DATE', 'ABASET_SUBCODE_DESCR', 
-                                           'cycle_begin_date', 'Member Dues',
-                                           'cycle_end_date', 'product_code', 
-                                           'order_no', 'order_line_no', 'grace_date', 
-                                           'DOB','the_rank', 'member_renewal_indicator', 
-                                           'earliest_begin_date', 'order_count'], axis=1)
-    
     # Assign new columns for bundled data to the `renewal_df` dataframe by summing specific groups of columns
     renewal_df = renewal_df.assign(
-        article_order=renewal_df[['Article Download', 'Journal', 'Magazine', 'Newsletter', 'Single Issue']].sum(axis=1),
-        books_order=renewal_df[['Book', 'E-Book', 'Chapter Download']].sum(axis=1),
-        contribution_order=renewal_df[['Contribution', 'Donation']].sum(axis=1),
-        digital_education_order=renewal_df[['Webinar', 'On-Demand']].sum(axis=1),
-        ecd_misc_order=renewal_df[['Course Materials Download']].sum(axis=1),
-        events_misc_order=renewal_df[['Product', 'Exhibitor', 'Sponsorship Non-UBIT', 'Sponsorship UBIT']].sum(axis=1),
-        inventory_misc_order=renewal_df[['Brochure', 'CD-ROM', 'Directory', 'Errata', 'Letter', 'Loose Leaf', 'Pamphlet', 'Standing Order']].sum(axis=1),
-        meeting_order=renewal_df[['Meeting', 'Virtual Meeting', 'Invite Only Meeting', 'ABA Midyear', 'In-Person']].sum(axis=1),
-        merchandise_order=renewal_df[['General Merchandise', 'Clothing']].sum(axis=1),
-        misc_order=renewal_df[['Audio Download', 'Inventory Product Package']].sum(axis=1)
+        article_order=renewal_df[['article_download', 'journal', 'magazine', 'newsletter', 'single_issue']].sum(axis=1),
+        books_order=renewal_df[['book_sales', 'e_book', 'audio_download']].sum(axis=1),
+        contribution_order=renewal_df[['contribution', 'donation']].sum(axis=1),
+        digital_education_order=renewal_df[['webinar', 'on_demand', 'chapter_download', 'course_materials_download', 'on_demand_video']].sum(axis=1),
+        events_misc_order=renewal_df[['product', 'exhibitor', 'sponsorship_non_ubit', 'sponsorship_ubit']].sum(axis=1),
+        inventory_misc_order=renewal_df[['brochure', 'cd_rom', 'directory', 'errata', 'letter', 'loose_leaf', 'pamphlet', 'standing_order', 'inventory_product_package']].sum(axis=1),
+        meeting_order=renewal_df[['meeting', 'virtual_meeting', 'invite_only_meeting', 'in_person']].sum(axis=1),
+        merchandise_order=renewal_df[['general_merchandise', 'clothing']].sum(axis=1),
     ).drop(columns=[
-        # Drop all the original columns that were summed into the new columns
-        'Article Download', 'Journal', 'Magazine', 'Newsletter', 'Single Issue',
-        'Book', 'E-Book', 'Chapter Download', 'Contribution', 'Donation',
-        'Webinar', 'On-Demand', 'Course Materials Download','Product',
-        'Exhibitor', 'Sponsorship Non-UBIT', 'Sponsorship UBIT',
-        'Brochure', 'CD-ROM', 'Directory', 'Errata', 'Letter',
-        'Loose Leaf', 'Pamphlet', 'Standing Order','Meeting',
-        'Virtual Meeting', 'Invite Only Meeting','ABA Midyear',
-        'In-Person', 'General Merchandise', 'Clothing',
-        'Audio Download', 'Inventory Product Package'
-    ])
-
+        'article_download', 'journal', 'magazine', 'newsletter', 'single_issue',
+        'book_sales', 'e_book', 'audio_download', 'contribution', 'donation',
+        'webinar', 'on_demand', 'chapter_download', 'course_materials_download',
+        'product', 'exhibitor', 'sponsorship_non_ubit', 'sponsorship_ubit',
+        'brochure', 'cd_rom', 'directory', 'errata', 'letter', 'loose_leaf',
+        'pamphlet', 'standing_order', 'inventory_product_package', 'meeting',
+        'virtual_meeting', 'invite_only_meeting', 'in_person',
+        'general_merchandise', 'clothing', 'on_demand_video'])
+    
     # Apply categorization
-    renewal_df['STATE'] = renewal_df['STATE'].apply(categorize_state)
-
+    renewal_df['state'] = renewal_df['state'].apply(categorize_state)
+    
     # Apply categorization
-    renewal_df['ABASET_CODE_DESCR'] = renewal_df['ABASET_CODE_DESCR'].apply(categorize_practice)
-
-    # formatting
-    renewal_df.columns = renewal_df.columns.str.lower()
-    renewal_df.columns = renewal_df.columns.str.replace(' ', '_')
-    renewal_df.columns = renewal_df.columns.str.replace('-', '_')
-
-    # dropping the following columns as they are imbalanced as per the eda report
-    drop_cols = ['events_cle', 'misc_order', 'disability_indicator', 
-                 'ethnicity_code', 'auto_enroll_section_count', 'gender_code', 
-                 'descr']
-    renewal_df = renewal_df.drop(columns=drop_cols, axis=1)
-
+    renewal_df['abaset_code_descr'] = renewal_df['abaset_code_descr'].apply(categorize_practice)
+   
+    # Apply categorization
+    renewal_df['gender_code']= renewal_df['gender_code'].apply(categorize_gender)
+    
     # List of categorical columns to frequency-encode
-    categorical_cols = ['abaset_code_descr', 'state']
+    categorical_cols = ['ethincity_code', 'abaset_code_descr', 'disability_indicator', 'sexual_orientation', 'abaset_code_descr', 'state']
 
     # Apply frequency encoding using a loop
     for col in categorical_cols:
         frequency  = renewal_df[col].value_counts(normalize=True)
         renewal_df[col + '_encoded'] = renewal_df[col].map(frequency)
 
-    columns_to_check= ['dues_required_section_count', 'no_charge_section_count', 
-                       'member_groups', 'article', 'books','on_demand_video',
-                       'news_aba', 'podcast', 'aba_advantage', 'article_order', 
-                       'age', 'books_order', 'contribution_order', 'digital_education_order', 
-                       'ecd_misc_order','events_misc_order', 'inventory_misc_order', 
-                       'meeting_order', 'merchandise_order']
-    
-    skewness = renewal_df[columns_to_check].skew()
-    ## < ±0.5: Fairly symmetrical (no need to transform)
-    ## 0.5–1: Moderate skewness (may need transformation)
-    ## > 1: Highly skewed (need transformation) log transformation
-    columns_to_log_transform = skewness[skewness > 0.5].index.tolist()
 
+    # 1. OneHotEncode to 'payment_type' & 'gender_code' columns
+    categorical_cols = ['payment_type','gender_code']
+    ohe = OneHotEncoder(sparse_output=False)
+
+    # 2. Fit and transform
+    encoded_array = ohe.fit_transform(renewal_df[categorical_cols])
+
+    # 3. Get encoded feature names
+    encoded_df = pd.DataFrame(
+        encoded_array,
+        columns=ohe.get_feature_names_out(categorical_cols),
+        index=renewal_df.index  # keep the original index
+    )
+
+    # 4. Combine original + encoded (without dropping)
+    renewal_df = pd.concat([renewal_df, encoded_df], axis=1)
+
+    # dropping the following columns as the frequency encoded columns are already created
+    renewal_df = renewal_df.drop(['payment_type', 'gender_code', 'ethincity_code', 'abaset_code_descr',
+                                'disability_indicator', 'sexual_orientation', 'state', 'receipt_type_descr',
+                                'payment_type', 'group_member_dues', 'member_dues', 'activity'], axis=1)
+    renewal_df.columns = renewal_df.columns.str.lower()
+    renewal_df.columns = renewal_df.columns.str.replace(' ', '_')
+    renewal_df.columns = renewal_df.columns.str.replace('-', '_')
+
+    # List of columns to check skewness and transform
+    columns_to_check= ['dues_required_section_count', 'no_charge_section_count', 'auto_enroll_section_count',
+                    'inferred_age', 'aoi_count', 'article', 'books', 'events_cle',
+                    'news_aba', 'podcast', 'aba_advantage', 'member_groups', 'article_order', 'books_order',
+                    'contribution_order', 'digital_education_order', 'events_misc_order',
+                    'inventory_misc_order', 'meeting_order', 'merchandise_order', 'ethincity_code_encoded',
+                    'abaset_code_descr_encoded', 'disability_indicator_encoded', 'sexual_orientation_encoded',
+                    'state_encoded', 'payment_type_automated', 'payment_type_manual',
+                    'gender_code_female', 'gender_code_male', 'gender_code_other']
+
+    # Copy DataFrame to avoid modifying original
     renewal_df_log = renewal_df.copy()
-    renewal_df_log[columns_to_log_transform] = renewal_df_log[columns_to_log_transform].apply(np.log1p)
 
-    renewal_df_log = renewal_df_log.drop(['abaset_code_descr', 'state', 
-                                        'ecd_misc_order', 'events_misc_order', 
-                                        'inventory_misc_order', 'merchandise_order', 
-                                        'article_order', 'news_aba', 'contribution_order', 
-                                        'podcast', 'books_order', 'on_demand_video'], 
-                                        axis=1)
-    
+    # Calculate skewness dictionary dynamically
+    skewness = renewal_df_log[columns_to_check].skew().to_dict()
+
+    # Group columns by skewness category
+    yeo_johnson_cols = []
+    square_cols = []
+    no_transform_cols = []
+    sqrt_cols = []
+    log1p_cols = []
+    boxcox_cols = []
+
+    for col, skew in skewness.items():
+        if skew <= -2:
+            yeo_johnson_cols.append(col)
+        elif -2 < skew < -0.5:
+            square_cols.append(col)
+        elif -0.5 <= skew <= 0.5:
+            no_transform_cols.append(col)
+        elif 0.5 < skew <= 2:
+            sqrt_cols.append(col)
+        elif 2 < skew <= 6:
+            log1p_cols.append(col)
+        else:  # skew > 6
+            boxcox_cols.append(col)
+
+    # Apply transformations
+    # 1) Yeo-Johnson for highly negative skew (<= -2)
+    if yeo_johnson_cols:
+        pt_yj = PowerTransformer(method='yeo-johnson')
+        renewal_df_log[yeo_johnson_cols] = pt_yj.fit_transform(renewal_df_log[yeo_johnson_cols])
+
+    # 2) Square for moderate negative skew (-2< to <-0.5)
+    for col in square_cols:
+        renewal_df_log[col] = np.square(renewal_df_log[col])
+
+    # 3) No transform for near symmetric (-0.5<= to <=0.5)
+    # (no change needed)
+
+    # 4) Square root for moderate positive skew (<0.5 to 2)
+    for col in sqrt_cols:
+        renewal_df_log[col] = np.sqrt(renewal_df_log[col])
+
+    # 5) Log1p for positive skew (2 to 6)
+    for col in log1p_cols:
+        renewal_df_log[col] = np.log1p(renewal_df_log[col])
+
+    # 6) Box-Cox for very high positive skew (>6), fallback to log1p if not strictly positive
+    for col in boxcox_cols:
+        if (renewal_df_log[col] > 0).all():
+            renewal_df_log[col], _ = boxcox(renewal_df_log[col])
+        else:
+            renewal_df_log[col] = np.log1p(renewal_df_log[col])
+
+
+    columns_not_used_in_the_model = ['podcast', 'disability_indicator_encoded','sexual_orientation_encoded',
+                                    'ethincity_code_encoded', 'member_groups_orders', 'events_cle',
+                                    'dues_required_section_count', 'no_charge_section_count', 'auto_enroll_section_count',
+                                    'gender_code_female','gender_code_male', 'gender_code_other', 'contribution_order',
+                                    'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order',
+                                    'payment_type_automated', 'payment_type_manual', 'books_order', 'news_aba', 'aba_advantage']
+
+
+    renewal_df_log= renewal_df_log.drop(columns_not_used_in_the_model, axis=1)
+
     # drop member_renewed_indicator column if it exists
     if ('member_renewed_indicator' in renewal_df_log.columns):
         renewal_df_log.drop(columns=['member_renewed_indicator'], inplace=True)
@@ -269,20 +355,19 @@ def load_gx_suite(suite):
     :return: 0.
     """
 
-    # column count = 12
+    # column count = 10
     expectation = gx.expectations.ExpectTableColumnCountToEqual(
-        value=12
+        value=10
     )
     suite.add_expectation(
         expectation=expectation
     )
     #__________________________________________________________________________
 
-    # ensure all columns are named as we expect    
-    column_list = ['customer_id', 'dues_required_section_count', 'no_charge_section_count',
-       'member_groups', 'article', 'books', 'aba_advantage', 'age',
-       'digital_education_order', 'meeting_order', 'abaset_code_descr_encoded',
-       'state_encoded']
+    # ensure all columns are named as we expect        
+    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'article', 'books',
+                   'member_groups', 'digital_education_order', 'meeting_order',
+                   'abaset_code_descr_encoded', 'state_encoded']
 
  
     expectation = gx.expectations.ExpectTableColumnsToMatchSet(
@@ -297,7 +382,17 @@ def load_gx_suite(suite):
 
     # ensure all columns are of certain type
 
-    # customer_id is the only int64 column
+    # customer_id is an integer
+    expectation = gx.expectations.ExpectColumnValuesToBeOfType(
+        column="customer_id",
+        type_="int64"
+    )
+
+    suite.add_expectation(
+        expectation=expectation
+    )
+
+    # inferred_age is an integer
     expectation = gx.expectations.ExpectColumnValuesToBeOfType(
         column="customer_id",
         type_="int64"
@@ -308,10 +403,9 @@ def load_gx_suite(suite):
     )
 
     # the rest of the columns are of type float64
-    cols = ['dues_required_section_count', 'no_charge_section_count',
-       'member_groups', 'article', 'books', 'aba_advantage', 'age',
-       'digital_education_order', 'meeting_order', 'abaset_code_descr_encoded',
-       'state_encoded']
+    cols = ['aoi_count', 'article', 'books', 'member_groups', 
+            'digital_education_order', 'meeting_order', 
+            'abaset_code_descr_encoded', 'state_encoded']
 
     for col in cols:
 
@@ -326,11 +420,9 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
     
     # check that there are no missing values in any of the columns
-    column_list = ['customer_id', 'dues_required_section_count', 'no_charge_section_count',
-       'member_groups', 'article', 'books', 'aba_advantage', 'age',
-       'digital_education_order', 'meeting_order', 'abaset_code_descr_encoded',
-       'state_encoded']
-
+    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'article', 'books',
+                   'member_groups', 'digital_education_order', 'meeting_order',
+                   'abaset_code_descr_encoded', 'state_encoded']
 
     for col in column_list:
     
@@ -354,7 +446,8 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # columns that we expect to contain mostly 0
-    cols = ['books', 'aba_advantage']
+    cols = ['books', 'meeting_order', 'digital_education_order', 'article',
+            'aoi_count']
 
     for col in cols:
     
@@ -409,7 +502,7 @@ def run_model(df_new_unseen_data):
     """
 
     # pull the model from the pickle file
-    with open('lgbm_yl_v1_model.pkl', 'rb') as file:
+    with open(model_file_name, 'rb') as file:
         model = pickle.load(file)
 
     # extract customer_id column for later use
