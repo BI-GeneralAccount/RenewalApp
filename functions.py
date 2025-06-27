@@ -12,7 +12,7 @@ from sklearn.preprocessing import PowerTransformer
 from scipy.stats import boxcox
 
 TEST = 0
-model_file_name = '250623_xgb_model.pkl'
+model_file_name = '250627_hierarchy_lgb_model.pkl'
 
 def app_intro_text():
     """
@@ -57,14 +57,12 @@ def categorize_state(state):
     """
 
     # Define categories
-    territories = ['AS', 'FM', 'GU', 'MH', 'MP', 'PW', 'PR', 'VI']
-    military = ['AP', 'AE']
     top_5_states = ['CA', 'NY', 'TX', 'IL', 'FL']
     northeast = ['CT', 'ME', 'MA', 'NH', 'RI', 'VT', 'NJ', 'PA']
     midwest = ['IN', 'IA', 'KS', 'MI', 'MN', 'MO', 'NE', 'ND', 'OH', 'SD', 'WI']
     south = ['DE', 'GA', 'KY', 'MD', 'NC', 'SC', 'TN', 'VA', 'WV', 'AL', 'MS', 'AR', 'LA', 'OK', 'DC']
     west = ['AK', 'AZ', 'CO', 'HI', 'ID', 'MT', 'NV', 'NM', 'OR', 'UT', 'WA', 'WY']
-    
+
     clean_state = str(state).strip().upper()
     if state in top_5_states:
         return state
@@ -76,12 +74,8 @@ def categorize_state(state):
         return 'South'
     elif state in west:
         return 'West'
-    elif state in territories:
-        return 'Territories'
-    elif state in military:
-        return 'Overseas military'
     else:
-        return 'International'
+        return 'other';
     
 def categorize_practice(practice):
     """
@@ -91,13 +85,18 @@ def categorize_practice(practice):
     :return: the practice category/type.
     """
 
-    practice_type = ['0', 'Solo Practitioner', 'Government', 'Small Firm (2-5 Attorneys)', 'Corporate',
-            'Private Practice (6+ Attorneys)', 'Non-Profit','Public Interest/Legal Aid']
-    
+    practice_type = ['0', 'Corporate', 'Private Practice (6+ Attorneys)']
+    no_profit = ['Academic', 'Non-Profit','Public Interest/Legal Aid']
+    small_firms = ['Small Firm (2-5 Attorneys)', 'Solo Practitioner', 'Inactive/Retired']
+
     if practice in practice_type:
         return practice
+    elif practice in no_profit:
+        return 'non_profit'
+    elif practice in small_firms:
+        return 'small_firms'
     else:
-       return 'Other' 
+       return 'government';
 
 def categorize_payment_method(row):
     """
@@ -132,6 +131,49 @@ def categorize_gender(gender):
     else:
         return 'other';
 
+def categorize_ethnicity(ethincity_code):
+    """
+    Categorizes the ethnicity of a row item.
+
+    :param a: an ethnicity code
+    :return: a string, the ethnicity assigned to that row
+    """
+
+    ethnicity = ['HISPANIC', 'BLK/AFAM']
+    white = ['WHITECAUC', 'MULTI', 'DECLINE']
+    native_american = ['NATIVAMER', 'HAW/PACISL']
+    asian = ['ASIAN', 'MIDEAST']
+
+    #clean_code = str(code).strip().upper()
+    if ethincity_code in ethnicity:
+        return ethincity_code
+    elif ethincity_code in white:
+        return 'white'
+    elif ethincity_code in native_american:
+        return 'native_american'
+    elif ethincity_code in asian:
+        return 'asian'
+    else:
+        return 'others';
+
+def categorize_sexuality(sex_orientation):
+    """
+    Categorizes the sexual orientation of a row item.
+
+    :param a: a sexual orientation item
+    :return: a string, the sexual orientation assigned to that row
+    """
+    
+    no_response = ['0']
+    hetro = ['Heterosexual']
+
+    if sex_orientation in no_response:
+        return 'no_response'
+    elif sex_orientation in hetro:
+        return 'Heterosexual'
+    else:
+        return 'other';
+
 def clean_data(df_raw_data):
     """
     Processes and cleans data from data collection phase and prepares it for
@@ -159,6 +201,93 @@ def clean_data(df_raw_data):
     # Apply the function row-wise
     renewal_df['payment_type'] = renewal_df.apply(categorize_payment_method, axis=1)
 
+    # create hierarchy for the date
+    payment_hierarchy = {
+        'Manual' : 2,
+        'Automated' : 1
+    }
+    renewal_df['payment_type_h'] = renewal_df['payment_type'].map(payment_hierarchy)
+    
+    # Apply categorization
+    renewal_df['state'] = renewal_df['state'].apply(categorize_state)
+
+    # create a state hierarchy
+    state_hierarchy = {
+        'South': 10,
+        'Midwest': 9,
+        'West': 8,
+        'TX': 7,
+        'Northeast': 6,
+        'IL': 5,
+        'CA': 4,
+        'FL': 3,
+        'other': 2,
+        'NY': 1
+    }
+
+    renewal_df['state_h'] = renewal_df['state'].map(state_hierarchy)
+
+    # Apply categorization
+    renewal_df['practice_type'] = renewal_df['abaset_code_descr'].apply(categorize_practice)
+
+    # create hierarchy/order for practice type
+    practice_order = {
+    '0' : 6,
+    'Private Practice (6+ Attorneys)' : 5,
+    'small_firms' : 4,
+    'Corporate' : 3,
+    'government' : 2,
+    'non_profit' : 1,
+    }
+
+    renewal_df['practice_type_h'] = renewal_df['practice_type'].map(practice_order)
+
+    # Apply categorization
+    renewal_df['gender']= renewal_df['gender_code'].apply(categorize_gender)
+
+    # create hierarchy/order for gender
+    gender_order = {
+    'male' : 3,
+    'female' : 2,
+    'other' : 1,
+    }
+
+    renewal_df['gender_h'] = renewal_df['gender'].map(gender_order)
+
+    # Apply categorization
+    renewal_df['ethnicity'] = renewal_df['ethincity_code'].apply(categorize_ethnicity)
+
+    # create hierarchy/order for ethnicity
+    ethnicity_order = {
+    'white' : 6,
+    'BLK/AFAM' : 5,
+    'asian' : 4,
+    'native_american' : 3,
+    'HISPANIC' : 2,
+    'others' : 1}
+
+    renewal_df['ethnicity_h'] = renewal_df['ethnicity'].map(ethnicity_order)
+
+    # Apply categorization
+    renewal_df['sexual_orientation_group'] = renewal_df['sexual_orientation'].apply(categorize_sexuality)
+
+    # create hierarchy/order for sexual orientation
+    s_orient_order = {
+    'Heterosexual' : 3,
+    'other' : 2,
+    'no_response' : 1
+    }
+
+    renewal_df['s_orientation_h'] = renewal_df['sexual_orientation_group'].map(s_orient_order)
+
+    # create hierarchy/order for disability
+    disability_order = {
+    'Y' : 2,
+    'N' : 1
+    }
+
+    renewal_df['disability_h'] = renewal_df['disability_indicator'].map(disability_order)
+
     # Assign new columns for bundled data to the `renewal_df` dataframe by summing specific groups of columns
     renewal_df = renewal_df.assign(
         article_order=renewal_df[['article_download', 'journal', 'magazine', 'newsletter', 'single_issue']].sum(axis=1),
@@ -178,136 +307,30 @@ def clean_data(df_raw_data):
         'pamphlet', 'standing_order', 'inventory_product_package', 'meeting',
         'virtual_meeting', 'invite_only_meeting', 'in_person',
         'general_merchandise', 'clothing', 'on_demand_video'])
+
+    # dropping the following columns as the ordinal hierarchy is already created
+    renewal_df = renewal_df.drop(['gender_code', 'ethincity_code', 'abaset_code_descr', 'receipt_type_descr',
+                                'sexual_orientation', 'member_groups_orders', 'activity'], axis=1)
     
-    # Apply categorization
-    renewal_df['state'] = renewal_df['state'].apply(categorize_state)
-    
-    # Apply categorization
-    renewal_df['abaset_code_descr'] = renewal_df['abaset_code_descr'].apply(categorize_practice)
-   
-    # Apply categorization
-    renewal_df['gender_code']= renewal_df['gender_code'].apply(categorize_gender)
-    
-    # List of categorical columns to frequency-encode
-    categorical_cols = ['ethincity_code', 'abaset_code_descr', 'disability_indicator', 'sexual_orientation', 'abaset_code_descr', 'state']
-
-    # Apply frequency encoding using a loop
-    for col in categorical_cols:
-        frequency  = renewal_df[col].value_counts(normalize=True)
-        renewal_df[col + '_encoded'] = renewal_df[col].map(frequency)
-
-
-    # 1. OneHotEncode to 'payment_type' & 'gender_code' columns
-    categorical_cols = ['payment_type','gender_code']
-    ohe = OneHotEncoder(sparse_output=False)
-
-    # 2. Fit and transform
-    encoded_array = ohe.fit_transform(renewal_df[categorical_cols])
-
-    # 3. Get encoded feature names
-    encoded_df = pd.DataFrame(
-        encoded_array,
-        columns=ohe.get_feature_names_out(categorical_cols),
-        index=renewal_df.index  # keep the original index
-    )
-
-    # 4. Combine original + encoded (without dropping)
-    renewal_df = pd.concat([renewal_df, encoded_df], axis=1)
-
-    # dropping the following columns as the frequency encoded columns are already created
-    renewal_df = renewal_df.drop(['payment_type', 'gender_code', 'ethincity_code', 'abaset_code_descr',
-                                'disability_indicator', 'sexual_orientation', 'state', 'receipt_type_descr',
-                                'payment_type', 'group_member_dues', 'member_dues', 'activity'], axis=1)
     renewal_df.columns = renewal_df.columns.str.lower()
     renewal_df.columns = renewal_df.columns.str.replace(' ', '_')
     renewal_df.columns = renewal_df.columns.str.replace('-', '_')
 
-    # List of columns to check skewness and transform
-    columns_to_check= ['dues_required_section_count', 'no_charge_section_count', 'auto_enroll_section_count',
-                    'inferred_age', 'aoi_count', 'article', 'books', 'events_cle',
-                    'news_aba', 'podcast', 'aba_advantage', 'member_groups', 'article_order', 'books_order',
-                    'contribution_order', 'digital_education_order', 'events_misc_order',
-                    'inventory_misc_order', 'meeting_order', 'merchandise_order', 'ethincity_code_encoded',
-                    'abaset_code_descr_encoded', 'disability_indicator_encoded', 'sexual_orientation_encoded',
-                    'state_encoded', 'payment_type_automated', 'payment_type_manual',
-                    'gender_code_female', 'gender_code_male', 'gender_code_other']
+    columns_not_used_in_the_model = ['state', 'payment_type', 'practice_type', 'gender','ethnicity', 'sexual_orientation_group', 'disability_indicator',
+                                     'dues_required_section_count','no_charge_section_count', 'auto_enroll_section_count', 'disability_h',
+                                     'events_cle', 'contribution_order', 'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order']
 
-    # Copy DataFrame to avoid modifying original
-    renewal_df_log = renewal_df.copy()
-
-    # Calculate skewness dictionary dynamically
-    skewness = renewal_df_log[columns_to_check].skew().to_dict()
-
-    # Group columns by skewness category
-    yeo_johnson_cols = []
-    square_cols = []
-    no_transform_cols = []
-    sqrt_cols = []
-    log1p_cols = []
-    boxcox_cols = []
-
-    for col, skew in skewness.items():
-        if skew <= -2:
-            yeo_johnson_cols.append(col)
-        elif -2 < skew < -0.5:
-            square_cols.append(col)
-        elif -0.5 <= skew <= 0.5:
-            no_transform_cols.append(col)
-        elif 0.5 < skew <= 2:
-            sqrt_cols.append(col)
-        elif 2 < skew <= 6:
-            log1p_cols.append(col)
-        else:  # skew > 6
-            boxcox_cols.append(col)
-
-    # Apply transformations
-    # 1) Yeo-Johnson for highly negative skew (<= -2)
-    if yeo_johnson_cols:
-        pt_yj = PowerTransformer(method='yeo-johnson')
-        renewal_df_log[yeo_johnson_cols] = pt_yj.fit_transform(renewal_df_log[yeo_johnson_cols])
-
-    # 2) Square for moderate negative skew (-2< to <-0.5)
-    for col in square_cols:
-        renewal_df_log[col] = np.square(renewal_df_log[col])
-
-    # 3) No transform for near symmetric (-0.5<= to <=0.5)
-    # (no change needed)
-
-    # 4) Square root for moderate positive skew (<0.5 to 2)
-    for col in sqrt_cols:
-        renewal_df_log[col] = np.sqrt(renewal_df_log[col])
-
-    # 5) Log1p for positive skew (2 to 6)
-    for col in log1p_cols:
-        renewal_df_log[col] = np.log1p(renewal_df_log[col])
-
-    # 6) Box-Cox for very high positive skew (>6), fallback to log1p if not strictly positive
-    for col in boxcox_cols:
-        if (renewal_df_log[col] > 0).all():
-            renewal_df_log[col], _ = boxcox(renewal_df_log[col])
-        else:
-            renewal_df_log[col] = np.log1p(renewal_df_log[col])
-
-
-    columns_not_used_in_the_model = ['podcast', 'disability_indicator_encoded','sexual_orientation_encoded',
-                                    'ethincity_code_encoded', 'member_groups_orders', 'events_cle',
-                                    'dues_required_section_count', 'no_charge_section_count', 'auto_enroll_section_count',
-                                    'gender_code_female','gender_code_male', 'gender_code_other', 'contribution_order',
-                                    'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order',
-                                    'payment_type_automated', 'payment_type_manual', 'books_order', 'news_aba', 'aba_advantage']
-
-
-    renewal_df_log= renewal_df_log.drop(columns_not_used_in_the_model, axis=1)
+    renewal_df = renewal_df.drop(columns_not_used_in_the_model, axis=1) 
 
     # drop member_renewed_indicator column if it exists
-    if ('member_renewed_indicator' in renewal_df_log.columns):
-        renewal_df_log.drop(columns=['member_renewed_indicator'], inplace=True)
+    if ('member_renewed_indicator' in renewal_df.columns):
+        renewal_df.drop(columns=['member_renewed_indicator'], inplace=True)
 
     # convert 'customer_id' to int
-    renewal_df_log['customer_id'] = renewal_df_log['customer_id'].astype('int64')
-    renewal_df_log = renewal_df_log.reset_index(drop=True)
+    renewal_df['customer_id'] = renewal_df['customer_id'].astype('int64')
+    renewal_df = renewal_df.reset_index(drop=True)
     
-    return renewal_df_log;
+    return renewal_df;
 
 def create_gx_suite(dataframe):
     """
@@ -355,9 +378,9 @@ def load_gx_suite(suite):
     :return: 0.
     """
 
-    # column count = 10
+    # column count = 20
     expectation = gx.expectations.ExpectTableColumnCountToEqual(
-        value=10
+        value=20
     )
     suite.add_expectation(
         expectation=expectation
@@ -365,9 +388,11 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # ensure all columns are named as we expect        
-    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'article', 'books',
-                   'member_groups', 'digital_education_order', 'meeting_order',
-                   'abaset_code_descr_encoded', 'state_encoded']
+    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'group_member_dues',
+                   'member_dues', 'article', 'books', 'news_aba', 'podcast',
+                   'aba_advantage', 'member_groups', 'payment_type_h', 'state_h',
+                   'practice_type_h', 'gender_h', 'ethnicity_h', 's_orientation_h',
+                   'books_order', 'digital_education_order', 'meeting_order']
 
  
     expectation = gx.expectations.ExpectTableColumnsToMatchSet(
@@ -382,31 +407,27 @@ def load_gx_suite(suite):
 
     # ensure all columns are of certain type
 
-    # customer_id is an integer
-    expectation = gx.expectations.ExpectColumnValuesToBeOfType(
-        column="customer_id",
-        type_="int64"
-    )
+    # the rest of the columns are of type int64
+    cols = ['customer_id', 'aoi_count', 'group_member_dues', 'member_dues', 
+                   'member_groups', 'payment_type_h', 'state_h', 'practice_type_h', 
+                   'gender_h', 'ethnicity_h', 's_orientation_h', 'books_order', 
+                   'meeting_order']
 
-    suite.add_expectation(
-        expectation=expectation
-    )
+    for col in cols:
 
-    # inferred_age is an integer
-    expectation = gx.expectations.ExpectColumnValuesToBeOfType(
-        column="customer_id",
-        type_="int64"
-    )
+        expectation = gx.expectations.ExpectColumnValuesToBeOfType(
+            column=col,
+            type_="int64"
+        )   
 
-    suite.add_expectation(
-        expectation=expectation
-    )
+        suite.add_expectation(
+            expectation=expectation
+        )
 
     # the rest of the columns are of type float64
-    cols = ['aoi_count', 'article', 'books', 'member_groups', 
-            'digital_education_order', 'meeting_order', 
-            'abaset_code_descr_encoded', 'state_encoded']
-
+    cols = ['inferred_age', 'article', 'books', 'news_aba', 'podcast', 
+            'aba_advantage', 'digital_education_order']
+    
     for col in cols:
 
         expectation = gx.expectations.ExpectColumnValuesToBeOfType(
@@ -420,9 +441,11 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
     
     # check that there are no missing values in any of the columns
-    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'article', 'books',
-                   'member_groups', 'digital_education_order', 'meeting_order',
-                   'abaset_code_descr_encoded', 'state_encoded']
+    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'group_member_dues',
+                   'member_dues', 'article', 'books', 'news_aba', 'podcast',
+                   'aba_advantage', 'member_groups', 'payment_type_h', 'state_h',
+                   'practice_type_h', 'gender_h', 'ethnicity_h', 's_orientation_h',
+                   'books_order', 'digital_education_order', 'meeting_order']
 
     for col in column_list:
     
@@ -446,8 +469,8 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # columns that we expect to contain mostly 0
-    cols = ['books', 'meeting_order', 'digital_education_order', 'article',
-            'aoi_count']
+    cols = ['group_member_dues', 'books', 'news_aba', 'podcast', 'aba_advantage',
+            'books_order', 'meeting_order']
 
     for col in cols:
     
