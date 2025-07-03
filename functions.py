@@ -743,10 +743,6 @@ def generate_shap(df_model_output, df_model, model, class_0_probs_avg, class_1_p
     # create df of the shap values and rename their column names
     shap_df = pd.DataFrame(shap_values, columns=df_model.columns)
 
-    st.write("shap_df")
-    st.dataframe(shap_df)
-    st.write(df_model.columns)
-
     # drop cols needed for class 0/1 bins from df_model_output
     cleaned_model_output = df_model_output.drop(columns=['class_0_bins', 'class_1_bins'])
 
@@ -754,20 +750,13 @@ def generate_shap(df_model_output, df_model, model, class_0_probs_avg, class_1_p
     combined_df = pd.concat([cleaned_model_output.reset_index(drop=True), 
                              shap_df.reset_index(drop=True)], axis=1)
     
-    st.write("combined_df before:")
-    st.dataframe(combined_df)
-    
     # drop demographic & non-product columns
 
     non_product_cols = ["inferred_age", "aoi_count", "payment_type_h", "state_h",
                         "practice_type_h", "gender_h", "ethnicity_h",
-                        "s_orientation_h"]
+                        "s_orientation_h", "group_member_dues", "member_dues"]
     
     combined_df = combined_df.drop(columns=non_product_cols)
-
-    st.write("combined_df after:")
-    st.dataframe(combined_df)
-
 
     # dfs containing only Class 0 & Class 1 info, respectively
     class_0_output, class_1_output = generate_class_dfs(combined_df)
