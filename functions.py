@@ -12,7 +12,7 @@ from sklearn.preprocessing import PowerTransformer
 from scipy.stats import boxcox
 
 TEST = 0
-model_file_name = '250627_hierarchy_lgb_model.pkl'
+model_file_name = '250707_hierarchy_lgb_model.pkl'
 
 def app_intro_text():
     """
@@ -318,7 +318,8 @@ def clean_data(df_raw_data):
 
     columns_not_used_in_the_model = ['state', 'payment_type', 'practice_type', 'gender','ethnicity', 'sexual_orientation_group', 'disability_indicator',
                                      'dues_required_section_count','no_charge_section_count', 'auto_enroll_section_count', 'disability_h',
-                                     'events_cle', 'contribution_order', 'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order']
+                                     'events_cle', 'contribution_order', 'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order',
+                                     'group_member_dues']
 
     renewal_df = renewal_df.drop(columns_not_used_in_the_model, axis=1) 
 
@@ -378,9 +379,9 @@ def load_gx_suite(suite):
     :return: 0.
     """
 
-    # column count = 20
+    # column count = 19
     expectation = gx.expectations.ExpectTableColumnCountToEqual(
-        value=20
+        value=19
     )
     suite.add_expectation(
         expectation=expectation
@@ -388,7 +389,7 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # ensure all columns are named as we expect        
-    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'group_member_dues',
+    column_list = ['customer_id', 'inferred_age', 'aoi_count',
                    'member_dues', 'article', 'books', 'news_aba', 'podcast',
                    'aba_advantage', 'member_groups', 'payment_type_h', 'state_h',
                    'practice_type_h', 'gender_h', 'ethnicity_h', 's_orientation_h',
@@ -408,7 +409,7 @@ def load_gx_suite(suite):
     # ensure all columns are of certain type
 
     # the rest of the columns are of type int64
-    cols = ['customer_id', 'aoi_count', 'group_member_dues', 'member_dues', 
+    cols = ['customer_id', 'aoi_count', 'member_dues', 
                    'member_groups', 'payment_type_h', 'state_h', 'practice_type_h', 
                    'gender_h', 'ethnicity_h', 's_orientation_h', 'books_order', 
                    'meeting_order']
@@ -441,7 +442,7 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
     
     # check that there are no missing values in any of the columns
-    column_list = ['customer_id', 'inferred_age', 'aoi_count', 'group_member_dues',
+    column_list = ['customer_id', 'inferred_age', 'aoi_count',
                    'member_dues', 'article', 'books', 'news_aba', 'podcast',
                    'aba_advantage', 'member_groups', 'payment_type_h', 'state_h',
                    'practice_type_h', 'gender_h', 'ethnicity_h', 's_orientation_h',
@@ -469,7 +470,7 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # columns that we expect to contain mostly 0
-    cols = ['group_member_dues', 'books', 'news_aba', 'podcast', 'aba_advantage',
+    cols = ['books', 'news_aba', 'podcast', 'aba_advantage',
             'books_order', 'meeting_order']
 
     for col in cols:
@@ -754,7 +755,7 @@ def generate_shap(df_model_output, df_model, model, class_0_probs_avg, class_1_p
 
     non_product_cols = ["inferred_age", "aoi_count", "payment_type_h", "state_h",
                         "practice_type_h", "gender_h", "ethnicity_h",
-                        "s_orientation_h", "group_member_dues", "member_dues"]
+                        "s_orientation_h", "member_dues"]
     
     combined_df = combined_df.drop(columns=non_product_cols)
 
