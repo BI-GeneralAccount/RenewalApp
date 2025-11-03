@@ -15,8 +15,6 @@ TEST = 0
 # st.set_page_config(layout="wide")
 
 def main():
-
-    st.write("test line here")
     
     # Page Header area for logo & text
     app_intro_text()
