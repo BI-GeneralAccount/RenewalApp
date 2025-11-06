@@ -15,6 +15,8 @@ TEST = 0
 # st.set_page_config(layout="wide")
 
 def main():
+
+    st.write("Pickle file: 250930_old_hierarchy_lgb_model.pkl")
     
     # Page Header area for logo & text
     app_intro_text()
