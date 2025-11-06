@@ -16,7 +16,7 @@ TEST = 0
 
 def main():
 
-    st.write("Pickle file: 250930_old_hierarchy_lgb_model.pkl")
+    st.write("Pickle file: 250715_hierarchy_lgb_model.pkl")
     
     # Page Header area for logo & text
     app_intro_text()
