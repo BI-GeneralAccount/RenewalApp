@@ -12,7 +12,7 @@ from sklearn.preprocessing import PowerTransformer
 from scipy.stats import boxcox
 
 TEST = 0
-model_file_name = '250715_hierarchy_lgb_model.pkl'
+model_file_name = '251210_lgb_model_with_0_to_9.pkl'
 
 def app_intro_text():
     """
@@ -212,32 +212,34 @@ def clean_data(df_raw_data):
     renewal_df['state'] = renewal_df['state'].apply(categorize_state)
 
     # create a state hierarchy
-    state_hierarchy = {
-        'South': 10,
-        'Midwest': 9,
-        'West': 8,
-        'TX': 7,
-        'Northeast': 6,
-        'IL': 5,
-        'CA': 4,
-        'FL': 3,
-        'other': 2,
-        'NY': 1
-    }
 
+    state_hierarchy = {
+        'Midwest': 10,
+        'South': 9,
+        'Northeast': 8,
+        'FL': 7,
+        'West': 6,
+        'TX': 5,
+        'IL': 4,
+        'other': 3,
+        'NY': 2,
+        'CA': 1
+    }
+ 
     renewal_df['state_h'] = renewal_df['state'].map(state_hierarchy)
 
     # Apply categorization
     renewal_df['practice_type'] = renewal_df['abaset_code_descr'].apply(categorize_practice)
 
     # create hierarchy/order for practice type
+
     practice_order = {
-    '0' : 6,
-    'Private Practice (6+ Attorneys)' : 5,
-    'small_firms' : 4,
-    'Corporate' : 3,
-    'government' : 2,
-    'non_profit' : 1,
+        '0' : 6,
+        'Private Practice (6+ Attorneys)' : 5,
+        'Corporate' : 4,
+        'small_firms' : 3,
+        'government' : 2,
+        'non_profit' : 1,
     }
 
     renewal_df['practice_type_h'] = renewal_df['practice_type'].map(practice_order)
@@ -247,9 +249,9 @@ def clean_data(df_raw_data):
 
     # create hierarchy/order for gender
     gender_order = {
-    'male' : 3,
-    'female' : 2,
-    'other' : 1,
+        'male' : 3,
+        'female' : 2,
+        'other' : 1,
     }
 
     renewal_df['gender_h'] = renewal_df['gender'].map(gender_order)
@@ -258,13 +260,15 @@ def clean_data(df_raw_data):
     renewal_df['ethnicity'] = renewal_df['ethincity_code'].apply(categorize_ethnicity)
 
     # create hierarchy/order for ethnicity
+
     ethnicity_order = {
-    'white' : 6,
-    'BLK/AFAM' : 5,
-    'asian' : 4,
-    'native_american' : 3,
-    'HISPANIC' : 2,
-    'others' : 1}
+        'white' : 6,
+        'asian' : 5,
+        'HISPANIC' : 4,
+        'native_american' : 3,
+        'unknown' : 2,
+        'BLK/AFAM' : 1
+    }
 
     renewal_df['ethnicity_h'] = renewal_df['ethnicity'].map(ethnicity_order)
 
@@ -273,17 +277,17 @@ def clean_data(df_raw_data):
 
     # create hierarchy/order for sexual orientation
     s_orient_order = {
-    'Heterosexual' : 3,
-    'other' : 2,
-    'no_response' : 1
+        'Heterosexual' : 3,
+        'other' : 2,
+        'no_response' : 1
     }
 
     renewal_df['s_orientation_h'] = renewal_df['sexual_orientation_group'].map(s_orient_order)
 
     # create hierarchy/order for disability
     disability_order = {
-    'Y' : 2,
-    'N' : 1
+        'Y' : 2,
+        'N' : 1
     }
 
     renewal_df['disability_h'] = renewal_df['disability_indicator'].map(disability_order)
