@@ -190,142 +190,145 @@ def clean_data(df_raw_data):
     df_raw_data.columns = df_raw_data.columns.str.lower()
 
     # Drop rows where activity is 'Other'
-    df_raw_data = df_raw_data[df_raw_data['activity'] != 'Other']
-    df_raw_data.reset_index(drop=True, inplace=True)
+    
+    # df_raw_data = df_raw_data[df_raw_data['activity'] != 'Other']
+
+    # df_raw_data.reset_index(drop=True, inplace=True)
     # Create the member_renewed_indicator column
-    df_raw_data['member_renewed_indicator'] = df_raw_data['activity'].apply(lambda x: 1 if x.lower() == 'renewed' else 0)
+    # df_raw_data['member_renewed_indicator'] = df_raw_data['activity'].apply(lambda x: 1 if x.lower() == 'renewed' else 0)
 
     # Drop duplicate customer_id, keeping only the last occurrence
     renewal_df = df_raw_data.drop_duplicates(subset='customer_id', keep='last')
 
     # Apply the function row-wise
-    renewal_df['payment_type'] = renewal_df.apply(categorize_payment_method, axis=1)
+    # renewal_df['payment_type'] = renewal_df.apply(categorize_payment_method, axis=1)
 
     # create hierarchy for the date
-    payment_hierarchy = {
-        'Manual' : 2,
-        'Automated' : 1
-    }
-    renewal_df['payment_type_h'] = renewal_df['payment_type'].map(payment_hierarchy)
+    # payment_hierarchy = {
+    #     'Manual' : 2,
+    #     'Automated' : 1
+    # }
+
+    # renewal_df['payment_type_h'] = renewal_df['payment_type'].map(payment_hierarchy)
     
     # Apply categorization
-    renewal_df['state'] = renewal_df['state'].apply(categorize_state)
+    # renewal_df['state'] = renewal_df['state'].apply(categorize_state)
 
     # create a state hierarchy
 
-    state_hierarchy = {
-        'Midwest': 10,
-        'South': 9,
-        'Northeast': 8,
-        'FL': 7,
-        'West': 6,
-        'TX': 5,
-        'IL': 4,
-        'other': 3,
-        'NY': 2,
-        'CA': 1
-    }
+    # state_hierarchy = {
+    #     'Midwest': 10,
+    #     'South': 9,
+    #     'Northeast': 8,
+    #     'FL': 7,
+    #     'West': 6,
+    #     'TX': 5,
+    #     'IL': 4,
+    #     'other': 3,
+    #     'NY': 2,
+    #     'CA': 1
+    # }
  
-    renewal_df['state_h'] = renewal_df['state'].map(state_hierarchy)
+    # renewal_df['state_h'] = renewal_df['state'].map(state_hierarchy)
 
     # Apply categorization
-    renewal_df['practice_type'] = renewal_df['abaset_code_descr'].apply(categorize_practice)
+    # renewal_df['practice_type'] = renewal_df['abaset_code_descr'].apply(categorize_practice)
 
     # create hierarchy/order for practice type
 
-    practice_order = {
-        '0' : 6,
-        'Private Practice (6+ Attorneys)' : 5,
-        'Corporate' : 4,
-        'small_firms' : 3,
-        'government' : 2,
-        'non_profit' : 1,
-    }
+    # practice_order = {
+    #     '0' : 6,
+    #     'Private Practice (6+ Attorneys)' : 5,
+    #     'Corporate' : 4,
+    #     'small_firms' : 3,
+    #     'government' : 2,
+    #     'non_profit' : 1,
+    # }
 
-    renewal_df['practice_type_h'] = renewal_df['practice_type'].map(practice_order)
+    # renewal_df['practice_type_h'] = renewal_df['practice_type'].map(practice_order)
 
     # Apply categorization
-    renewal_df['gender']= renewal_df['gender_code'].apply(categorize_gender)
+    # renewal_df['gender']= renewal_df['gender_code'].apply(categorize_gender)
 
     # create hierarchy/order for gender
-    gender_order = {
-        'male' : 3,
-        'female' : 2,
-        'other' : 1,
-    }
+    # gender_order = {
+    #     'male' : 3,
+    #     'female' : 2,
+    #     'other' : 1,
+    # }
 
-    renewal_df['gender_h'] = renewal_df['gender'].map(gender_order)
+    # renewal_df['gender_h'] = renewal_df['gender'].map(gender_order)
 
     # Apply categorization
-    renewal_df['ethnicity'] = renewal_df['ethincity_code'].apply(categorize_ethnicity)
+    # renewal_df['ethnicity'] = renewal_df['ethincity_code'].apply(categorize_ethnicity)
 
     # create hierarchy/order for ethnicity
 
-    ethnicity_order = {
-        'white' : 6,
-        'asian' : 5,
-        'HISPANIC' : 4,
-        'native_american' : 3,
-        'unknown' : 2,
-        'BLK/AFAM' : 1
-    }
+    # ethnicity_order = {
+    #     'white' : 6,
+    #     'asian' : 5,
+    #     'HISPANIC' : 4,
+    #     'native_american' : 3,
+    #     'unknown' : 2,
+    #     'BLK/AFAM' : 1
+    # }
 
-    renewal_df['ethnicity_h'] = renewal_df['ethnicity'].map(ethnicity_order)
+    # renewal_df['ethnicity_h'] = renewal_df['ethnicity'].map(ethnicity_order)
 
     # Apply categorization
-    renewal_df['sexual_orientation_group'] = renewal_df['sexual_orientation'].apply(categorize_sexuality)
+    # renewal_df['sexual_orientation_group'] = renewal_df['sexual_orientation'].apply(categorize_sexuality)
 
     # create hierarchy/order for sexual orientation
-    s_orient_order = {
-        'Heterosexual' : 3,
-        'other' : 2,
-        'no_response' : 1
-    }
+    # s_orient_order = {
+    #     'Heterosexual' : 3,
+    #     'other' : 2,
+    #     'no_response' : 1
+    # }
 
-    renewal_df['s_orientation_h'] = renewal_df['sexual_orientation_group'].map(s_orient_order)
+    # renewal_df['s_orientation_h'] = renewal_df['sexual_orientation_group'].map(s_orient_order)
 
     # create hierarchy/order for disability
-    disability_order = {
-        'Y' : 2,
-        'N' : 1
-    }
+    # disability_order = {
+    #     'Y' : 2,
+    #     'N' : 1
+    # }
 
-    renewal_df['disability_h'] = renewal_df['disability_indicator'].map(disability_order)
+    # renewal_df['disability_h'] = renewal_df['disability_indicator'].map(disability_order)
 
     # Assign new columns for bundled data to the `renewal_df` dataframe by summing specific groups of columns
-    renewal_df = renewal_df.assign(
-        article_order=renewal_df[['article_download', 'journal', 'magazine', 'newsletter', 'single_issue']].sum(axis=1),
-        books_order=renewal_df[['book_sales', 'e_book', 'audio_download']].sum(axis=1),
-        contribution_order=renewal_df[['contribution', 'donation']].sum(axis=1),
-        digital_education_order=renewal_df[['webinar', 'on_demand', 'chapter_download', 'course_materials_download', 'on_demand_video']].sum(axis=1),
-        events_misc_order=renewal_df[['product', 'exhibitor', 'sponsorship_non_ubit', 'sponsorship_ubit']].sum(axis=1),
-        inventory_misc_order=renewal_df[['brochure', 'cd_rom', 'directory', 'errata', 'letter', 'loose_leaf', 'pamphlet', 'standing_order', 'inventory_product_package']].sum(axis=1),
-        meeting_order=renewal_df[['meeting', 'virtual_meeting', 'invite_only_meeting', 'in_person']].sum(axis=1),
-        merchandise_order=renewal_df[['general_merchandise', 'clothing']].sum(axis=1),
-    ).drop(columns=[
-        'article_download', 'journal', 'magazine', 'newsletter', 'single_issue',
-        'book_sales', 'e_book', 'audio_download', 'contribution', 'donation',
-        'webinar', 'on_demand', 'chapter_download', 'course_materials_download',
-        'product', 'exhibitor', 'sponsorship_non_ubit', 'sponsorship_ubit',
-        'brochure', 'cd_rom', 'directory', 'errata', 'letter', 'loose_leaf',
-        'pamphlet', 'standing_order', 'inventory_product_package', 'meeting',
-        'virtual_meeting', 'invite_only_meeting', 'in_person',
-        'general_merchandise', 'clothing', 'on_demand_video'])
+    # renewal_df = renewal_df.assign(
+    #     article_order=renewal_df[['article_download', 'journal', 'magazine', 'newsletter', 'single_issue']].sum(axis=1),
+    #     books_order=renewal_df[['book_sales', 'e_book', 'audio_download']].sum(axis=1),
+    #     contribution_order=renewal_df[['contribution', 'donation']].sum(axis=1),
+    #     digital_education_order=renewal_df[['webinar', 'on_demand', 'chapter_download', 'course_materials_download', 'on_demand_video']].sum(axis=1),
+    #     events_misc_order=renewal_df[['product', 'exhibitor', 'sponsorship_non_ubit', 'sponsorship_ubit']].sum(axis=1),
+    #     inventory_misc_order=renewal_df[['brochure', 'cd_rom', 'directory', 'errata', 'letter', 'loose_leaf', 'pamphlet', 'standing_order', 'inventory_product_package']].sum(axis=1),
+    #     meeting_order=renewal_df[['meeting', 'virtual_meeting', 'invite_only_meeting', 'in_person']].sum(axis=1),
+    #     merchandise_order=renewal_df[['general_merchandise', 'clothing']].sum(axis=1),
+    # ).drop(columns=[
+    #     'article_download', 'journal', 'magazine', 'newsletter', 'single_issue',
+    #     'book_sales', 'e_book', 'audio_download', 'contribution', 'donation',
+    #     'webinar', 'on_demand', 'chapter_download', 'course_materials_download',
+    #     'product', 'exhibitor', 'sponsorship_non_ubit', 'sponsorship_ubit',
+    #     'brochure', 'cd_rom', 'directory', 'errata', 'letter', 'loose_leaf',
+    #     'pamphlet', 'standing_order', 'inventory_product_package', 'meeting',
+    #     'virtual_meeting', 'invite_only_meeting', 'in_person',
+    #     'general_merchandise', 'clothing', 'on_demand_video'])
 
     # dropping the following columns as the ordinal hierarchy is already created
-    renewal_df = renewal_df.drop(['gender_code', 'ethincity_code', 'abaset_code_descr', 'receipt_type_descr',
-                                'sexual_orientation', 'member_groups_orders', 'activity'], axis=1)
+    # renewal_df = renewal_df.drop(['gender_code', 'ethincity_code', 'abaset_code_descr', 'receipt_type_descr',
+    #                             'sexual_orientation', 'member_groups_orders', 'activity'], axis=1)
     
-    renewal_df.columns = renewal_df.columns.str.lower()
-    renewal_df.columns = renewal_df.columns.str.replace(' ', '_')
-    renewal_df.columns = renewal_df.columns.str.replace('-', '_')
+    # renewal_df.columns = renewal_df.columns.str.lower()
+    # renewal_df.columns = renewal_df.columns.str.replace(' ', '_')
+    # renewal_df.columns = renewal_df.columns.str.replace('-', '_')
 
-    columns_not_used_in_the_model = ['state', 'payment_type', 'practice_type', 'gender','ethnicity', 'sexual_orientation_group', 'disability_indicator',
-                                     'dues_required_section_count','no_charge_section_count', 'auto_enroll_section_count', 'disability_h',
-                                     'events_cle', 'contribution_order', 'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order',
-                                     'group_member_dues']
+    # columns_not_used_in_the_model = ['state', 'payment_type', 'practice_type', 'gender','ethnicity', 'sexual_orientation_group', 'disability_indicator',
+    #                                  'dues_required_section_count','no_charge_section_count', 'auto_enroll_section_count', 'disability_h',
+    #                                  'events_cle', 'contribution_order', 'events_misc_order', 'inventory_misc_order', 'merchandise_order','article_order',
+    #                                  'group_member_dues']
 
-    renewal_df = renewal_df.drop(columns_not_used_in_the_model, axis=1) 
+    # renewal_df = renewal_df.drop(columns_not_used_in_the_model, axis=1) 
 
     # drop member_renewed_indicator column if it exists
     if ('member_renewed_indicator' in renewal_df.columns):
@@ -383,9 +386,9 @@ def load_gx_suite(suite):
     :return: 0.
     """
 
-    # column count = 19
+    # column count = 16
     expectation = gx.expectations.ExpectTableColumnCountToEqual(
-        value=19
+        value=16
     )
     suite.add_expectation(
         expectation=expectation
@@ -393,11 +396,11 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # ensure all columns are named as we expect        
-    column_list = ['customer_id', 'inferred_age', 'aoi_count',
-                   'member_dues', 'article', 'books', 'news_aba', 'podcast',
-                   'aba_advantage', 'member_groups', 'payment_type_h', 'state_h',
-                   'practice_type_h', 'gender_h', 'ethnicity_h', 's_orientation_h',
-                   'books_order', 'digital_education_order', 'meeting_order']
+    column_list = ['customer_id', 'aoi_count',
+                   'member_dues', 'article', 'books', 'news_aba',
+                   'aba_advantage', 'member_groups', 'payment_type_hierarchy', 'state_hierarchy',
+                   'practice_type_hierarchy', 'gender_hierarchy', 'ethnicity_hierarchy', 's_orientation_hierarchy',
+                   'digital_education_order', 'meeting_order']
 
  
     expectation = gx.expectations.ExpectTableColumnsToMatchSet(
@@ -413,10 +416,10 @@ def load_gx_suite(suite):
     # ensure all columns are of certain type
 
     # the rest of the columns are of type int64
-    cols = ['customer_id', 'aoi_count', 'member_dues', 
-                   'member_groups', 'payment_type_h', 'state_h', 'practice_type_h', 
-                   'gender_h', 'ethnicity_h', 's_orientation_h', 'books_order', 
-                   'meeting_order']
+    cols = ['customer_id', 'aoi_count', 'member_dues', 'member_groups',
+            'payment_type_hierarchy', 'state_hierarchy', 'practice_type_hierarchy',
+            'gender_hierarchy', 'ethnicity_hierarchy', 's_orientation_hierarchy',
+            'meeting_order']
 
     for col in cols:
 
@@ -430,7 +433,7 @@ def load_gx_suite(suite):
         )
 
     # the rest of the columns are of type float64
-    cols = ['inferred_age', 'article', 'books', 'news_aba', 'podcast', 
+    cols = ['article', 'books', 'news_aba', 
             'aba_advantage', 'digital_education_order']
     
     for col in cols:
@@ -446,11 +449,11 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
     
     # check that there are no missing values in any of the columns
-    column_list = ['customer_id', 'inferred_age', 'aoi_count',
-                   'member_dues', 'article', 'books', 'news_aba', 'podcast',
-                   'aba_advantage', 'member_groups', 'payment_type_h', 'state_h',
-                   'practice_type_h', 'gender_h', 'ethnicity_h', 's_orientation_h',
-                   'books_order', 'digital_education_order', 'meeting_order']
+    column_list = ['customer_id', 'aoi_count',
+                   'member_dues', 'article', 'books', 'news_aba',
+                   'aba_advantage', 'member_groups', 'payment_type_hierarchy', 'state_hierarchy',
+                   'practice_type_hierarchy', 'gender_hierarchy', 'ethnicity_hierarchy', 's_orientation_hierarchy',
+                   'digital_education_order', 'meeting_order']
 
     for col in column_list:
     
@@ -474,8 +477,7 @@ def load_gx_suite(suite):
     #__________________________________________________________________________
 
     # columns that we expect to contain mostly 0
-    cols = ['books', 'news_aba', 'podcast', 'aba_advantage',
-            'books_order', 'meeting_order']
+    cols = ['books', 'news_aba', 'aba_advantage', 'meeting_order']
 
     for col in cols:
     
@@ -757,9 +759,9 @@ def generate_shap(df_model_output, df_model, model, class_0_probs_avg, class_1_p
     
     # drop demographic & non-product columns
 
-    non_product_cols = ["inferred_age", "aoi_count", "payment_type_h", "state_h",
-                        "practice_type_h", "gender_h", "ethnicity_h",
-                        "s_orientation_h", "member_dues"]
+    non_product_cols = ["aoi_count", "payment_type_hierarchy", "state_hierarchy",
+                        "practice_type_hierarchy", "gender_hierarchy", "ethnicity_hierarchy",
+                        "s_orientation_hierarchy", "member_dues"]
     
     combined_df = combined_df.drop(columns=non_product_cols)
 
