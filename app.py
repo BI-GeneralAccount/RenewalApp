@@ -74,6 +74,13 @@ def main():
                                                            class_0_probs_avg, 
                                                            class_1_probs_avg)
 
+            # feature columns of the output file
+            feature_cols = class_0_output.columns[3:]
+            
+            # add ranking columns for each class output
+            class_0_output = add_shap_ranks(class_0_output, feature_cols, pred_col='predicted_class', prefix='rank_')
+            class_1_output = add_shap_ranks(class_1_output, feature_cols, pred_col='predicted_class', prefix='rank_')
+
             csv_download_buttons(class_0_output, class_1_output)   
             
             # ___________________ Single customer_id Waterfall ________________

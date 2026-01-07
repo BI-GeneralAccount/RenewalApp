@@ -810,6 +810,66 @@ def generate_shap(df_model_output, df_model, model, class_0_probs_avg, class_1_p
 
     return class_0_output, class_1_output
 
+def rank_shap_row(row: pd.Series, feature_cols: list, pred_col: str = 'predicted_class'):
+    """
+    Rank features within a single row based on SHAP values.
+    - If predicted_class == 1 (likely_renewal): rank SHAP by ascending
+    - If predicted_class == 0 (likely_drop): rank SHAP by descending (but negative numbers)
+    
+    The aim is for the output to be interpreted in number line format. So for 
+    likely_renewals, the smallest SHAP value gets a 1 and largest gets an 8 (for example). 
+    In likely_drops, the most positive value gets a -1 and the most smallest, most
+    negative value gets a -8 (for example).
+
+    :param a: a row from the dataframe
+    :param b: the list of the features in the output
+    :param c: the column containing the prediciont (0 or 1)
+    :returns: a pandas Series of ranks indexed by feature names
+    """
+
+    # extract the features from a row in the dataframe
+    shap = row[feature_cols].astype(float)
+
+    # ensure that the prediction (0 or 1) is an integer
+    pred_val = int(row[pred_col])
+
+    if pred_val == 1:
+        # larger SHAP (more positive) first
+        order = shap.sort_values(ascending=True)
+        # build rank mapping: 1..k according to the order above
+        ranks = pd.Series(range(1, len(order) + 1), index=order.index, name='rank')
+    
+    else:
+        # largest, most positive values assigned -1. Smallest values receive
+        # lowest, most negative rank
+        order = shap.sort_values(ascending=False)
+        # build rank mapping: -1..-k according to the order above
+        ranks = ( pd.Series(range(1, len(order) + 1), index=order.index, name='rank') ) * -1
+
+    return ranks.reindex(feature_cols)
+
+def add_shap_ranks(df: pd.DataFrame, feature_cols: list, pred_col: str = 'predicted_class', prefix: str = 'rank_'):
+    """
+    Adds per-feature rank columns to the dataframe
+
+    :param a: dataframe
+    :param b: list of the features in the output file
+    :param c: the prediction column of the output
+    :param d: prefix string for the new columns
+    :returns: the modified output dataframe
+    """
+
+    # compute ranks row-wise and concatenate
+    rank_matrix = df.apply(lambda r: rank_shap_row(r, feature_cols, pred_col), axis=1)
+    rank_df = pd.DataFrame(rank_matrix.values, columns=feature_cols, index=df.index)
+
+    # append rank columns to original dataframe
+    output = df.copy()
+    for f in feature_cols:
+        output[f'{prefix}{f}'] = rank_df[f]
+
+    return output
+
 def convert_for_download(df):
     """
     Converts a dataframe into csv for user download
