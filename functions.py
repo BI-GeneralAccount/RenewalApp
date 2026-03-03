@@ -597,7 +597,11 @@ def generate_charts(df_model_output):
             values=pie_counts.values,
             names=pie_counts.index.map(label_map),
             title='Predicted Class Proportion',
-            color_discrete_sequence=['#046ccc', '#86ccfb']
+            # color_discrete_sequence=['#046ccc', '#86ccfb']
+            color_discrete_map = {
+                "Drop" : '#046ccc',
+                "Renew" : '#86ccfb'
+            }
         )
         st.plotly_chart(fig2, use_container_width=True)
 
